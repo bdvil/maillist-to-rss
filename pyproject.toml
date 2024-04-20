@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "maillist-to-rss"
+name = "m2rss"
 version = "0.1.0"
 description = ""
 authors = ["bdvil <benjam.devillers@gmail.com>"]
@@ -9,11 +9,20 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 pydantic = "^2.7.0"
+pyyaml = "^6.0.1"
+click = "^8.1.7"
+psycopg = "^3.1.18"
+aiohttp = "^3.9.5"
+asyncio = "^3.4.3"
 
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4.1"
 mypy = "^1.9.0"
+
+
+[tool.poetry.scripts]
+m2rss = "m2rss.cli:root"
 
 [build-system]
 requires = ["poetry-core"]

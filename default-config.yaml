@@ -1,6 +1,9 @@
-  email_addr: email@example.com
-  email_server: mail.example.com
-  email_pass: pass
-  imap_port: 143
-  server_url: localhost
-  server_port: 8998
+email_addr: email@example.com
+email_server: mail.example.com
+email_pass: pass
+imap_port: 143
+
+database_url: postgresql://user:secret@localhost/db_name
+
+server_url: localhost
+server_port: 8998
