@@ -5,5 +5,5 @@ imap_port: 143
 
 database_url: postgresql://user:secret@localhost/db_name
 
-server_url: localhost
+service_url: mail2rss.example.com
 server_port: 8998

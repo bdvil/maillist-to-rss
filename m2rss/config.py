@@ -3,7 +3,7 @@ import shutil
 import yaml
 from pydantic import BaseModel
 
-from maillist_to_rss.constants import PROJECT_DIR
+from m2rss.constants import PROJECT_DIR
 
 
 class Config(BaseModel):
@@ -14,7 +14,7 @@ class Config(BaseModel):
 
     database_url: str
 
-    server_url: str
+    service_url: str
     server_port: int
 
 
