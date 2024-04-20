@@ -1,0 +1,6 @@
+  email_addr: email@example.com
+  email_server: mail.example.com
+  email_pass: pass
+  imap_port: 143
+  server_url: localhost
+  server_port: 8998
