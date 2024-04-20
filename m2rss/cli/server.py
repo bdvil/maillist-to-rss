@@ -178,7 +178,6 @@ async def http_server_task_runner(config: Config):
 
 async def main():
     config = load_config()
-    LOGGER.debug("CONFIG: %s", config.model_dump())
     await execute_migrations(config.database_url)
 
     server_task = asyncio.create_task(http_server_task_runner(config))
