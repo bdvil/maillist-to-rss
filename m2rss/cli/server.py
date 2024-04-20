@@ -85,7 +85,7 @@ async def get_emails(conninfo: str, sender: str, page: int = 0) -> list[Retrieve
             return emails
 
 
-def email_from_data(data: bytes):
+def email_from_data(data: bytes) -> Email:
     msg: Message = email.message_from_bytes(data)
     params = {}
     for key, val in msg.items():
@@ -114,19 +114,26 @@ def email_from_data(data: bytes):
 
 
 async def fetch_mails(config: Config):
-    await execute_migrations(config.database_url)
-
-    with IMAP4(config.email_server, config.imap_port) as mail:
-        mail.starttls()
-        mail.login(config.email_addr, config.email_pass)
-        mail.select()
-        _, data = mail.search(None, "ALL")
+    with IMAP4(config.email_server, config.imap_port) as imap_client:
+        imap_client.starttls()
+        imap_client.login(config.email_addr, config.email_pass)
+        imap_client.select()
+        _, data = imap_client.search(None, "ALL")
         for num in data[0].split():
-            _, fdata = mail.fetch(num, "(RFC822)")
+            _, fdata = imap_client.fetch(num, "(RFC822)")
             if fdata[0] is None or not isinstance(fdata[0], tuple):
                 continue
             msg = email_from_data(fdata[0][1])
-            # await save_email(config.database_url, msg)
+            print(f"Received new email from {msg.sender_addr}")
+            await save_email(config.database_url, msg)
+            imap_client.store(num, "+FLAGS", "\\Deleted")
+        imap_client.expunge()
+
+
+async def fetch_mail_task(config: Config):
+    while True:
+        await fetch_mails(config)
+        await asyncio.sleep(60)
 
 
 async def handle_flow(request: web.Request) -> web.Response:
@@ -172,9 +179,10 @@ async def http_server_task_runner(config: Config):
 async def main():
     config = load_config()
     LOGGER.debug("CONFIG: %s", config.model_dump())
+    await execute_migrations(config.database_url)
 
     server_task = asyncio.create_task(http_server_task_runner(config))
-    import_task = asyncio.create_task(fetch_mails(config))
+    import_task = asyncio.create_task(fetch_mail_task(config))
     await server_task
     await import_task
 
