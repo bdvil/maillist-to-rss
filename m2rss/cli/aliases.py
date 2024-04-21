@@ -29,9 +29,9 @@ def list_alias_command(sender: str):
     config = load_config()
     with Connection.connect(config.database_url) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT pass FROM aliases WHERE sender = %s", sender)
+            cur.execute("SELECT pass FROM aliases WHERE sender = %s", (sender,))
             for record in cur:
-                print(record[0])
+                print(f"* {config.service_url}/rss/{record[0]}")
 
 
 @alias_group.command("delete")
@@ -40,5 +40,5 @@ def delete_alias_command(name: str):
     config = load_config()
     with Connection.connect(config.database_url) as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM aliases WHERE pass = %s", name)
+            cur.execute("DELETE FROM aliases WHERE pass = %s", (name,))
             conn.commit()
