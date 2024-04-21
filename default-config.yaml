@@ -7,3 +7,5 @@ database_url: postgresql://user:secret@localhost/db_name
 
 service_url: mail2rss.example.com
 server_port: 8998
+
+admin_pass: "my-very-password"  # used to add aliases

@@ -17,6 +17,8 @@ class Config(BaseModel):
     service_url: str
     server_port: int
 
+    admin_pass: str
+
 
 def load_config() -> Config:
     default_config_path = PROJECT_DIR / "example-config.yaml"
