@@ -9,7 +9,7 @@ def alias_group():
     pass
 
 
-@alias_group.command("add", help="Add a new alias")
+@alias_group.command("add")
 @click.argument("name", type=str, help="Alias name")
 @click.argument("sender", type=str, help="Sender email")
 def add_alias_command(name: str, sender: str):
@@ -23,7 +23,7 @@ def add_alias_command(name: str, sender: str):
             conn.commit()
 
 
-@alias_group.command("list", help="List aliases of a given email")
+@alias_group.command("list")
 @click.argument("sender", type=str, help="Sender email")
 def list_alias_command(sender: str):
     config = load_config()
@@ -34,7 +34,7 @@ def list_alias_command(sender: str):
                 print(record[0])
 
 
-@alias_group.command("delete", help="Delete a given alias")
+@alias_group.command("delete")
 @click.argument("name", type=str, help="Sender email")
 def delete_alias_command(name: str):
     config = load_config()
