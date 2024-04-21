@@ -1,0 +1,5 @@
+CREATE TABLE aliases (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    pass TEXT,
+    sender TEXT
+);

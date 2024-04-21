@@ -11,7 +11,6 @@ from pydantic import BaseModel
 
 from m2rss.appkeys import config_key
 from m2rss.config import Config, load_config
-from m2rss.constants import LOGGER
 from m2rss.db_migrations import execute_migrations
 from m2rss.rss import RssChannel, RSSItem, make_rss
 
@@ -56,14 +55,24 @@ async def save_email(conninfo: str, mail: Email):
             await conn.commit()
 
 
-async def get_emails(conninfo: str, sender: str, page: int = 0) -> list[RetrievedEmail]:
+async def get_emails(
+    conninfo: str, alias: str, page: int = 0
+) -> list[RetrievedEmail] | None:
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT sender FROM aliases WHERE pass = %s LIMIT 1",
+                (alias,),
+            )
+            rec = await cur.fetchone()
+            if rec is None:
+                return None
+
             await cur.execute(
                 "SELECT id, date, user_agent, content_language, recipient, sender_full, sender_name, sender_addr, subject, body "
                 "FROM emails "
                 "WHERE sender_addr = %s LIMIT 20 OFFSET %s",
-                (sender, page * 20),
+                (rec[0], page * 20),
             )
             emails: list[RetrievedEmail] = []
             async for record in cur:
@@ -138,14 +147,17 @@ async def fetch_mail_task(config: Config):
 
 async def handle_flow(request: web.Request) -> web.Response:
     config = request.app[config_key]
-    sender_addr = request.match_info.get("addr", None)
+    alias = request.match_info.get("alias", None)
     page = int(request.query.get("page", 0))
-    if sender_addr is not None:
-        emails = await get_emails(config.database_url, sender_addr, page)
+    if alias is not None:
+        emails = await get_emails(config.database_url, alias, page)
+        if emails is None:
+            return web.Response(body="404: Not Found", status=404)
+
         channel = RssChannel(
-            title=sender_addr,
-            description=f"{sender_addr} mailing list",
-            link=f"{config.service_url}/rss/{sender_addr}",
+            title=alias,
+            description=f"{alias} mailing list",
+            link=f"{config.service_url}/rss/{alias}",
         )
         rss_items = [
             RSSItem(
@@ -166,7 +178,7 @@ async def handle_flow(request: web.Request) -> web.Response:
 
 async def http_server_task_runner(config: Config):
     app = web.Application()
-    app.add_routes([web.get("/rss/{addr}", handle_flow)])
+    app.add_routes([web.get("/rss/{alias}", handle_flow)])
     app[config_key] = config
 
     runner = web.AppRunner(app)
