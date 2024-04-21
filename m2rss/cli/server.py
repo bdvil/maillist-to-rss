@@ -176,31 +176,9 @@ async def handle_flow(request: web.Request) -> web.Response:
     return web.Response(body="404: Not Found", status=404)
 
 
-async def handle_create_alias(request: web.Request) -> web.Response:
-    config = request.app[config_key]
-    alias_name = request.query.get("name", None)
-    sender = request.query.get("sender", None)
-    password = request.query.get("pass", None)
-    if password != config.admin_pass:
-        return web.json_response({"error": "Forbidden."}, status=403)
-    if alias_name is None or sender is None or password is None:
-        return web.json_response(
-            {"error": "Missing query 'name', 'sender', 'pass'"}, status=404
-        )
-    async with await AsyncConnection.connect(config.database_url) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                "INSERT INTO aliases (pass, sender) VALUES (%s, %s)",
-                (alias_name, sender),
-            )
-            await conn.commit()
-    return web.json_response({"message": "Alias added"}, status=200)
-
-
 async def http_server_task_runner(config: Config):
     app = web.Application()
     app.add_routes([web.get("/rss/{alias}", handle_flow)])
-    app.add_routes([web.get("/create/alias", handle_create_alias)])
     app[config_key] = config
 
     runner = web.AppRunner(app)
