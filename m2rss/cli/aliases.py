@@ -10,8 +10,8 @@ def alias_group():
 
 
 @alias_group.command("add")
-@click.argument("name", type=str, help="Alias name")
-@click.argument("sender", type=str, help="Sender email")
+@click.argument("name", type=str)
+@click.argument("sender", type=str)
 def add_alias_command(name: str, sender: str):
     config = load_config()
     with Connection.connect(config.database_url) as conn:
@@ -24,7 +24,7 @@ def add_alias_command(name: str, sender: str):
 
 
 @alias_group.command("list")
-@click.argument("sender", type=str, help="Sender email")
+@click.argument("sender", type=str)
 def list_alias_command(sender: str):
     config = load_config()
     with Connection.connect(config.database_url) as conn:
@@ -35,7 +35,7 @@ def list_alias_command(sender: str):
 
 
 @alias_group.command("delete")
-@click.argument("name", type=str, help="Sender email")
+@click.argument("name", type=str)
 def delete_alias_command(name: str):
     config = load_config()
     with Connection.connect(config.database_url) as conn:
