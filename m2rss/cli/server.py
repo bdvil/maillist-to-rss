@@ -176,7 +176,7 @@ async def handle_flow(request: web.Request) -> web.Response:
     channel = RssChannel(
         title=alias,
         description=f"{sender} mailing list",
-        link=f"{config.service_url}/rss/{alias}",
+        link=f"{config.service_url}/page/{alias}.html",
     )
     rss_items = [
         RSSItem(
