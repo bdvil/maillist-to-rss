@@ -6,7 +6,7 @@ from m2rss.constants import LOGGER, PROJECT_DIR
 
 
 def migration_order() -> list[Path]:
-    migration_dir = PROJECT_DIR / "migrations"
+    migration_dir = PROJECT_DIR / "m2rss" / "migrations"
     migrations: list[Path] = []
     for file in migration_dir.iterdir():
         if not file.is_file() and file.suffix != ".sql":
