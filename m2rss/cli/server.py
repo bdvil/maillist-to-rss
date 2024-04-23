@@ -61,9 +61,7 @@ async def save_email(conninfo: str, mail: Email):
             await conn.commit()
 
 
-async def get_emails(
-    conninfo: str, alias: str, page: int = 0
-) -> list[RetrievedEmail] | None:
+async def sender_from_alias(conninfo: str, alias: str) -> str | None:
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
             await cur.execute(
@@ -73,13 +71,20 @@ async def get_emails(
             rec = await cur.fetchone()
             if rec is None:
                 return None
+            return rec[0]
 
+
+async def get_emails(
+    conninfo: str, sender: str, page: int = 0
+) -> list[RetrievedEmail] | None:
+    async with await AsyncConnection.connect(conninfo) as conn:
+        async with conn.cursor() as cur:
             await cur.execute(
                 "SELECT id, date, user_agent, content_language, recipient, "
                 "sender_full, sender_name, sender_addr, subject, body "
                 "FROM emails "
                 "WHERE sender_addr = %s ORDER BY date DESC LIMIT 20 OFFSET %s ",
-                (rec[0], page * 20),
+                (sender, page * 20),
             )
             emails: list[RetrievedEmail] = []
             async for record in cur:
@@ -101,23 +106,15 @@ async def get_emails(
             return emails
 
 
-async def get_email(conninfo: str, alias: str, item_id: int) -> RetrievedEmail | None:
+async def get_email(conninfo: str, sender: str, item_id: int) -> RetrievedEmail | None:
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
-            await cur.execute(
-                "SELECT sender FROM aliases WHERE pass = %s LIMIT 1",
-                (alias,),
-            )
-            rec = await cur.fetchone()
-            if rec is None:
-                return None
-
             await cur.execute(
                 "SELECT id, date, user_agent, content_language, recipient, "
                 "sender_full, sender_name, sender_addr, subject, body "
                 "FROM emails "
                 "WHERE sender_addr = %s AND id = %s LIMIT 1",
-                (rec[0], item_id),
+                (sender, item_id),
             )
             record = await cur.fetchone()
             if record is not None:
@@ -167,33 +164,36 @@ async def handle_flow(request: web.Request) -> web.Response:
     config = request.app[config_key]
     alias = request.match_info.get("alias", None)
     page = int(request.query.get("page", 0))
-    if alias is not None:
-        emails = await get_emails(config.database_url, alias, page)
-        if emails is None:
-            return web.Response(body="404: Not Found", status=404)
+    if alias is None:
+        return web.Response(body="404: Not Found", status=404)
+    sender = await sender_from_alias(config.database_url, alias)
+    if sender is None:
+        return web.Response(body="404: Not Found", status=404)
+    emails = await get_emails(config.database_url, sender, page)
+    if emails is None:
+        return web.Response(body="404: Not Found", status=404)
 
-        channel = RssChannel(
-            title=alias,
-            description=f"{alias} mailing list",
-            link=f"{config.service_url}/rss/{alias}",
+    channel = RssChannel(
+        title=alias,
+        description=f"{sender} mailing list",
+        link=f"{config.service_url}/rss/{alias}",
+    )
+    rss_items = [
+        RSSItem(
+            title=email.subject,
+            description=email.body,
+            guid=f"{config.service_url}/page/{alias}/{email.id}.html",
+            pub_date=email.date.astimezone(timezone.utc).strftime(
+                "%a, %d %b %Y %H:%M:%S %z"
+            ),
         )
-        rss_items = [
-            RSSItem(
-                title=email.subject,
-                description=email.body,
-                guid=f"{config.service_url}/page/{alias}/{email.id}.html",
-                pub_date=email.date.astimezone(timezone.utc).strftime(
-                    "%a, %d %b %Y %H:%M:%S %z"
-                ),
-            )
-            for email in emails
-        ]
-        return web.Response(
-            content_type="text/xml",
-            body=make_rss(f"{config.service_url}/rss/{alias}.xml", channel, rss_items),
-            status=200,
-        )
-    return web.Response(body="404: Not Found", status=404)
+        for email in emails
+    ]
+    return web.Response(
+        content_type="text/xml",
+        body=make_rss(f"{config.service_url}/rss/{alias}.xml", channel, rss_items),
+        status=200,
+    )
 
 
 async def error_response(
@@ -215,7 +215,10 @@ async def handle_item(request: web.Request) -> web.Response:
         return await error_response(request, 404, "Empty alias")
     if item_id is None:
         return await error_response(request, 404, "Empty item")
-    email = await get_email(config.database_url, alias, int(item_id))
+    sender = await sender_from_alias(config.database_url, alias)
+    if sender is None:
+        return await error_response(request, 404, "Unknown item.")
+    email = await get_email(config.database_url, sender, int(item_id))
     if email is None:
         return await error_response(request, 404, "Unknown item.")
     return await aiohttp_jinja2.render_template_async(
@@ -223,7 +226,7 @@ async def handle_item(request: web.Request) -> web.Response:
         request,
         {
             "item_id": item_id,
-            "feed_name": alias,
+            "feed_name": sender,
             "item": RSSItem(
                 title=email.subject,
                 description=email.body,
@@ -242,13 +245,16 @@ async def handle_page(request: web.Request) -> web.Response:
     page = int(request.query.get("page", 0))
     if alias is None:
         return await error_response(request, 404, "Empty alias")
-    emails = await get_emails(config.database_url, alias, page)
+    sender = await sender_from_alias(config.database_url, alias)
+    if sender is None:
+        return await error_response(request, 404, "Unknown item.")
+    emails = await get_emails(config.database_url, sender, page)
     if emails is None:
         return await error_response(request, 404, "Unknown alias.")
     if page < 0:
         return await error_response(request, 404, "Page should be positive.")
     data = {
-        "feed_name": alias,
+        "feed_name": sender,
         "items": [
             RSSItem(
                 title=email.subject,
