@@ -22,10 +22,11 @@ class RssChannel(BaseModel):
     ttl: int | None = None
 
 
-def make_rss(channel: RssChannel, items: Sequence[RSSItem]) -> str:
-    result = """<?xml version="1.0" encoding="UTF-8" ?>
-<rss version="2.0">
+def make_rss(self_link: str, channel: RssChannel, items: Sequence[RSSItem]) -> str:
+    result = f"""<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
+<atom:link href="{self_link}" rel="self" type="application/rss+xml" />
 """
     for key, val in channel.model_dump(exclude_none=True).items():
         result += f"<{key}>{val}</{key}>\n"
@@ -36,7 +37,7 @@ def make_rss(channel: RssChannel, items: Sequence[RSSItem]) -> str:
         result += f"<description>{item.description}</description>\n"
         if item.link is not None:
             result += f"<link>{item.link}</link>\n"
-        result += f"<guid>{item.guid}</guid>\n"
+        result += f'<guid isPermaLink="false">{self_link}/{item.guid}</guid>\n'
         result += f"<pubDate>{item.pub_date}</pubDate>\n"
         result += "</item>\n"
 

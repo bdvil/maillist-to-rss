@@ -21,6 +21,7 @@ def add_alias_command(name: str, sender: str):
                 (name, sender),
             )
             conn.commit()
+    print(f"Follow the feed here: {config.service_url}/rss/{name}.xml")
 
 
 @alias_group.command("list")
@@ -31,7 +32,7 @@ def list_alias_command(sender: str):
         with conn.cursor() as cur:
             cur.execute("SELECT pass FROM aliases WHERE sender = %s", (sender,))
             for record in cur:
-                print(f"* {config.service_url}/rss/{record[0]}")
+                print(f"* {config.service_url}/rss/{record[0]}.xml")
 
 
 @alias_group.command("delete")

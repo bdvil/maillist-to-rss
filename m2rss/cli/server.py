@@ -1,6 +1,6 @@
 import asyncio
 import email
-from datetime import datetime
+from datetime import datetime, timezone
 from email.message import Message
 from imaplib import IMAP4
 
@@ -145,13 +145,15 @@ async def handle_flow(request: web.Request) -> web.Response:
                 title=email.subject,
                 description=email.body,
                 guid=str(email.id),
-                pub_date=email.date.strftime("%a, %d %b %Y %H:%M:%S %z"),
+                pub_date=email.date.astimezone(timezone.utc).strftime(
+                    "%a, %d %b %Y %H:%M:%S %z"
+                ),
             )
             for email in emails
         ]
         return web.Response(
-            content_type="application/rss+xml",
-            body=make_rss(channel, rss_items),
+            content_type="text/xml",
+            body=make_rss(f"{config.service_url}/rss/{alias}.xml", channel, rss_items),
             status=200,
         )
     return web.Response(body="404: Not Found", status=404)
@@ -162,7 +164,7 @@ async def http_server_task_runner():
     await execute_migrations(config.database_url)
 
     app = web.Application()
-    app.add_routes([web.get("/rss/{alias}", handle_flow)])
+    app.add_routes([web.get("/rss/{alias}.xml", handle_flow)])
     app[config_key] = config
 
     runner = web.AppRunner(app)
