@@ -226,6 +226,7 @@ async def handle_item(request: web.Request) -> web.Response:
         {
             "item_id": item_id,
             "feed_name": sender,
+            "feed_alias": alias,
             "item": RSSItem(
                 title=email.subject,
                 description=email.body,
