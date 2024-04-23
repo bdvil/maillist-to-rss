@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from jinja2 import Environment, PackageLoader, select_autoescape
 from pydantic import BaseModel
 
 
@@ -23,23 +24,10 @@ class RssChannel(BaseModel):
 
 
 def make_rss(self_link: str, channel: RssChannel, items: Sequence[RSSItem]) -> str:
-    result = f"""<?xml version="1.0" encoding="UTF-8" ?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
-<channel>
-<atom:link href="{self_link}" rel="self" type="application/rss+xml" />
-"""
-    for key, val in channel.model_dump(exclude_none=True).items():
-        result += f"<{key}>{val}</{key}>\n"
-
-    for item in items:
-        result += "<item>\n"
-        result += f"<title>{item.title}</title>\n"
-        result += f"<description>{item.description}</description>\n"
-        if item.link is not None:
-            result += f"<link>{item.link}</link>\n"
-        result += f'<guid isPermaLink="false">{self_link}/{item.guid}</guid>\n'
-        result += f"<pubDate>{item.pub_date}</pubDate>\n"
-        result += "</item>\n"
-
-    result += "</channel></rss>"
-    return result
+    env = Environment(loader=PackageLoader("m2rss"), autoescape=select_autoescape())
+    template = env.get_template("feed.xml.jinja")
+    return template.render(
+        self_link=self_link,
+        channel=channel.model_dump(exclude_none=True),
+        items=items,
+    )

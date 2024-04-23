@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+    <atom:link href="{{self_link}}" rel="self" type="application/rss+xml" />
+    {% for key, val in channel.items() %}
+    <{{key}}>{{val}}</{{key}}>
+    {% endfor %}
+
+    {% for item in items %}
+    <item>
+        <title>{{item.title}}</title>
+        <description>{{item.description}}</description>
+        {% if item.link is not none %}
+        <link>{{item.link}}</link>
+        {% endif %}
+        <guid isPermaLink="false">{{self_link}}/{{item.guid}}</guid>
+        <pubDate>{{item.pub_date}}</pubDate>
+    </item>
+    {% endfor %}
+</channel>
+</rss>
