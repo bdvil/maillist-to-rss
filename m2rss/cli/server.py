@@ -198,7 +198,7 @@ async def fetch_mail_task():
     config = load_config()
     while True:
         await fetch_mails(config)
-        await asyncio.sleep(60)
+        await asyncio.sleep(config.fetch_mail_every)
 
 
 @click.command("watch-mail")

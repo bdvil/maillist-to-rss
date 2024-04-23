@@ -11,6 +11,7 @@ class Config(BaseModel):
     email_server: str
     email_pass: str
     imap_port: int
+    fetch_mail_every: int
 
     database_url: str
 

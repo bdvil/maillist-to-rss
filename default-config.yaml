@@ -2,6 +2,7 @@ email_addr: email@example.com
 email_server: mail.example.com
 email_pass: pass
 imap_port: 143
+fetch_mail_every: 600  # in sec
 
 database_url: postgresql://user:secret@localhost/db_name
 
