@@ -126,29 +126,6 @@ def email_from_data(data: bytes) -> Email:
     return Email.model_validate(params)
 
 
-async def fetch_mails(config: Config):
-    with IMAP4(config.email_server, config.imap_port) as imap_client:
-        imap_client.starttls()
-        imap_client.login(config.email_addr, config.email_pass)
-        imap_client.select()
-        _, data = imap_client.search(None, "ALL")
-        for num in data[0].split():
-            _, fdata = imap_client.fetch(num, "(RFC822)")
-            if fdata[0] is None or not isinstance(fdata[0], tuple):
-                continue
-            msg = email_from_data(fdata[0][1])
-            print(f"Received new email from {msg.sender_addr}")
-            await save_email(config.database_url, msg)
-            imap_client.store(num, "+FLAGS", "\\Deleted")
-        imap_client.expunge()
-
-
-async def fetch_mail_task(config: Config):
-    while True:
-        await fetch_mails(config)
-        await asyncio.sleep(60)
-
-
 async def handle_flow(request: web.Request) -> web.Response:
     config = request.app[config_key]
     alias = request.match_info.get("alias", None)
@@ -180,7 +157,10 @@ async def handle_flow(request: web.Request) -> web.Response:
     return web.Response(body="404: Not Found", status=404)
 
 
-async def http_server_task_runner(config: Config):
+async def http_server_task_runner():
+    config = load_config()
+    await execute_migrations(config.database_url)
+
     app = web.Application()
     app.add_routes([web.get("/rss/{alias}", handle_flow)])
     app[config_key] = config
@@ -192,16 +172,35 @@ async def http_server_task_runner(config: Config):
     await asyncio.Event().wait()
 
 
-async def main():
-    config = load_config()
-    await execute_migrations(config.database_url)
-
-    server_task = asyncio.create_task(http_server_task_runner(config))
-    import_task = asyncio.create_task(fetch_mail_task(config))
-    await server_task
-    await import_task
-
-
 @click.command("serve")
 def serve_command():
-    asyncio.run(main())
+    asyncio.run(http_server_task_runner())
+
+
+async def fetch_mails(config: Config):
+    with IMAP4(config.email_server, config.imap_port) as imap_client:
+        imap_client.starttls()
+        imap_client.login(config.email_addr, config.email_pass)
+        imap_client.select()
+        _, data = imap_client.search(None, "ALL")
+        for num in data[0].split():
+            _, fdata = imap_client.fetch(num, "(RFC822)")
+            if fdata[0] is None or not isinstance(fdata[0], tuple):
+                continue
+            msg = email_from_data(fdata[0][1])
+            print(f"Received new email from {msg.sender_addr}")
+            await save_email(config.database_url, msg)
+            imap_client.store(num, "+FLAGS", "\\Deleted")
+        imap_client.expunge()
+
+
+async def fetch_mail_task():
+    config = load_config()
+    while True:
+        await fetch_mails(config)
+        await asyncio.sleep(60)
+
+
+@click.command("watch-mail")
+def watch_mail_command():
+    asyncio.run(fetch_mail_task())
