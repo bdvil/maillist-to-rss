@@ -3,7 +3,6 @@ import email
 from datetime import datetime, timezone
 from email.message import Message
 from imaplib import IMAP4
-from typing import Any
 
 import aiohttp_jinja2
 import click
