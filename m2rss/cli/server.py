@@ -39,7 +39,10 @@ async def save_email(conninfo: str, mail: Email):
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "INSERT INTO emails (date, user_agent, content_language, recipient, sender_full, sender_name, sender_addr, subject, body) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "INSERT INTO emails "
+                "(date, user_agent, content_language, recipient, "
+                "sender_full, sender_name, sender_addr, subject, body) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     mail.date,
                     mail.user_agent,
@@ -69,7 +72,8 @@ async def get_emails(
                 return None
 
             await cur.execute(
-                "SELECT id, date, user_agent, content_language, recipient, sender_full, sender_name, sender_addr, subject, body "
+                "SELECT id, date, user_agent, content_language, recipient, "
+                "sender_full, sender_name, sender_addr, subject, body "
                 "FROM emails "
                 "WHERE sender_addr = %s LIMIT 20 OFFSET %s",
                 (rec[0], page * 20),
