@@ -173,7 +173,7 @@ async def handle_flow(request: web.Request) -> web.Response:
         return web.Response(body="404: Not Found", status=404)
 
     channel = RssChannel(
-        title=alias,
+        title=sender,
         description=f"{sender} mailing list",
         link=f"{config.service_url}/page/{alias}.html",
     )
