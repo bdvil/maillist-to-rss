@@ -159,7 +159,7 @@ def email_from_data(data: bytes) -> Email:
     return Email.model_validate(params)
 
 
-async def handle_flow(request: web.Request) -> web.Response:
+async def handle_rss_feed(request: web.Request) -> web.Response:
     config = request.app[config_key]
     alias = request.match_info.get("alias", None)
     page = int(request.query.get("page", 0))
@@ -182,6 +182,7 @@ async def handle_flow(request: web.Request) -> web.Response:
             title=email.subject,
             description=email.body,
             guid=f"{config.service_url}/page/{alias}/{email.id}.html",
+            link=f"{config.service_url}/page/{alias}/{email.id}.html",
             pub_date=email.date.astimezone(timezone.utc).strftime(
                 "%a, %d %b %Y %H:%M:%S %z"
             ),
@@ -282,7 +283,7 @@ async def http_server_task_runner():
 
     app = web.Application()
     aiohttp_jinja2.setup(app, loader=jinja2.PackageLoader("m2rss"), enable_async=True)
-    app.add_routes([web.get("/rss/{alias}.xml", handle_flow)])
+    app.add_routes([web.get("/rss/{alias}.xml", handle_rss_feed)])
     app.add_routes([web.get("/page/{alias}/{item}.html", handle_item)])
     app.add_routes([web.get("/page/{alias}.html", handle_page)])
     app[config_key] = config
