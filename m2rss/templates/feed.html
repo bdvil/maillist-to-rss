@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Feed {{ feed_name }}</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Feed {{ feed_name }}">
+</head>
+<body>
+    <h1>Feed {{ feed_name }}</h1>
+    {% for item in items %}
+    <article>
+        <h2></h2>
+        <p>{{ item.description }}</p>
+        <p>{{ item.pub_date }}</p>
+        <a href="{{item.guid}}">Read more →</a>
+    </article>
+    {% endfor %}
+
+    <section id="navigation">
+        {% if next_link is not none %} 
+        <a href="{{ next_link }}">← Next</a>
+        {%endif %}
+        {% if prev_link is not none %} 
+        <a href="{{ prev_link }}">Previous →</a>
+        {%endif %}
+    </section>
+</body>
+</html>

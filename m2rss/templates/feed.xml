@@ -13,7 +13,7 @@
         {% if item.link is not none %}
         <link>{{item.link}}</link>
         {% endif %}
-        <guid isPermaLink="false">{{self_link}}/{{item.guid}}</guid>
+        <guid isPermaLink="true">{{item.guid}}</guid>
         <pubDate>{{item.pub_date}}</pubDate>
     </item>
     {% endfor %}

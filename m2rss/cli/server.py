@@ -3,8 +3,11 @@ import email
 from datetime import datetime, timezone
 from email.message import Message
 from imaplib import IMAP4
+from typing import Any
 
+import aiohttp_jinja2
 import click
+import jinja2
 from aiohttp import web
 from psycopg import AsyncConnection
 from pydantic import BaseModel
@@ -75,7 +78,7 @@ async def get_emails(
                 "SELECT id, date, user_agent, content_language, recipient, "
                 "sender_full, sender_name, sender_addr, subject, body "
                 "FROM emails "
-                "WHERE sender_addr = %s LIMIT 20 OFFSET %s",
+                "WHERE sender_addr = %s ORDER BY date DESC LIMIT 20 OFFSET %s ",
                 (rec[0], page * 20),
             )
             emails: list[RetrievedEmail] = []
@@ -96,6 +99,40 @@ async def get_emails(
                 )
 
             return emails
+
+
+async def get_email(conninfo: str, alias: str, item_id: int) -> RetrievedEmail | None:
+    async with await AsyncConnection.connect(conninfo) as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT sender FROM aliases WHERE pass = %s LIMIT 1",
+                (alias,),
+            )
+            rec = await cur.fetchone()
+            if rec is None:
+                return None
+
+            await cur.execute(
+                "SELECT id, date, user_agent, content_language, recipient, "
+                "sender_full, sender_name, sender_addr, subject, body "
+                "FROM emails "
+                "WHERE sender_addr = %s AND id = %s LIMIT 1",
+                (rec[0], item_id),
+            )
+            record = await cur.fetchone()
+            if record is not None:
+                return RetrievedEmail(
+                    id=record[0],
+                    date=record[1],
+                    user_agent=record[2],
+                    content_language=record[3],
+                    recipient=record[4],
+                    sender_full=record[5],
+                    sender_name=record[6],
+                    sender_addr=record[7],
+                    subject=record[8],
+                    body=record[9],
+                )
 
 
 def email_from_data(data: bytes) -> Email:
@@ -144,7 +181,7 @@ async def handle_flow(request: web.Request) -> web.Response:
             RSSItem(
                 title=email.subject,
                 description=email.body,
-                guid=str(email.id),
+                guid=f"{config.service_url}/page/{alias}/{email.id}.html",
                 pub_date=email.date.astimezone(timezone.utc).strftime(
                     "%a, %d %b %Y %H:%M:%S %z"
                 ),
@@ -159,12 +196,89 @@ async def handle_flow(request: web.Request) -> web.Response:
     return web.Response(body="404: Not Found", status=404)
 
 
+async def error_response(
+    request: web.Request, error_code: int, error_message: str
+) -> web.Response:
+    return await aiohttp_jinja2.render_template_async(
+        "error.html",
+        request,
+        {"error_code": error_code, "error_message": error_message},
+        status=error_code,
+    )
+
+
+async def handle_item(request: web.Request) -> web.Response:
+    config = request.app[config_key]
+    alias = request.match_info.get("alias", None)
+    item_id = request.match_info.get("item", None)
+    if alias is None:
+        return await error_response(request, 404, "Empty alias")
+    if item_id is None:
+        return await error_response(request, 404, "Empty item")
+    email = await get_email(config.database_url, alias, int(item_id))
+    if email is None:
+        return await error_response(request, 404, "Unknown item.")
+    return await aiohttp_jinja2.render_template_async(
+        "item.html",
+        request,
+        {
+            "item_id": item_id,
+            "feed_name": alias,
+            "item": RSSItem(
+                title=email.subject,
+                description=email.body,
+                guid=f"{config.service_url}/page/{alias}/{email.id}.html",
+                pub_date=email.date.astimezone(timezone.utc).strftime(
+                    "%a, %d %b %Y %H:%M:%S %z"
+                ),
+            ),
+        },
+    )
+
+
+async def handle_page(request: web.Request) -> web.Response:
+    config = request.app[config_key]
+    alias = request.match_info.get("alias", None)
+    page = int(request.query.get("page", 0))
+    if alias is None:
+        return await error_response(request, 404, "Empty alias")
+    emails = await get_emails(config.database_url, alias, page)
+    if emails is None:
+        return await error_response(request, 404, "Unknown alias.")
+    if page < 0:
+        return await error_response(request, 404, "Page should be positive.")
+    data = {
+        "feed_name": alias,
+        "items": [
+            RSSItem(
+                title=email.subject,
+                description=email.body,
+                guid=f"{config.service_url}/page/{alias}/{email.id}.html",
+                pub_date=email.date.astimezone(timezone.utc).strftime(
+                    "%a, %d %b %Y %H:%M:%S %z"
+                ),
+            )
+            for email in emails
+        ],
+    }
+    if page > 0:
+        data["next_link"] = f"{config.service_url}/page/{alias}.html?page={page - 1}"
+    else:
+        data["next_link"] = None
+    data["prev_link"] = f"{config.service_url}/page/{alias}.html?page={page + 1}"
+
+    return await aiohttp_jinja2.render_template_async("feed.html", request, data)
+
+
 async def http_server_task_runner():
     config = load_config()
     await execute_migrations(config.database_url)
 
     app = web.Application()
+    aiohttp_jinja2.setup(app, loader=jinja2.PackageLoader("m2rss"), enable_async=True)
     app.add_routes([web.get("/rss/{alias}.xml", handle_flow)])
+    app.add_routes([web.get("/page/{alias}/{item}.html", handle_item)])
+    app.add_routes([web.get("/page/{alias}.html", handle_page)])
     app[config_key] = config
 
     runner = web.AppRunner(app)

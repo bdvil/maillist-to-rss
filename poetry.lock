@@ -96,6 +96,21 @@ yarl = ">=1.0,<2.0"
 speedups = ["Brotli", "aiodns", "brotlicffi"]
 
 [[package]]
+name = "aiohttp-jinja2"
+version = "1.6"
+description = "jinja2 template renderer for aiohttp.web (http server for asyncio)"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "aiohttp-jinja2-1.6.tar.gz", hash = "sha256:a3a7ff5264e5bca52e8ae547bbfd0761b72495230d438d05b6c0915be619b0e2"},
+    {file = "aiohttp_jinja2-1.6-py3-none-any.whl", hash = "sha256:0df405ee6ad1b58e5a068a105407dc7dcc1704544c559f1938babde954f945c7"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.9.0"
+jinja2 = ">=3.0.0"
+
+[[package]]
 name = "aiosignal"
 version = "1.3.1"
 description = "aiosignal: a list of registered asynchronous callbacks"
@@ -863,4 +878,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "7779703add29e2866571a3a3b7af3a00a5de778f233cc8a89b97424a12029c20"
+content-hash = "899c95d5e1982ac52f57ddf5ccf5c6316d6302da1b0acff53dbbfa2915503054"

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Item {{ item_id }} from feed {{ feed_name }}</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Item {{ item_id }} from feed {{ feed_name }}">
+</head>
+<body>
+    <h1>Item {{ item_id }} from feed {{ feed_name }}</h1>
+    <article>
+        <h2>{{ item.title }}</h2>
+        <p>{{ item.description }}</p>
+    </article>
+    <p>Published {{ item.pub_date }}</p>
+    <a href="/page/{{ feed_name }}.html">See feed page</a>
+</body>
+</html>
