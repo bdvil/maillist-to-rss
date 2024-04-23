@@ -25,7 +25,7 @@ class RssChannel(BaseModel):
 
 def make_rss(self_link: str, channel: RssChannel, items: Sequence[RSSItem]) -> str:
     env = Environment(loader=PackageLoader("m2rss"), autoescape=select_autoescape())
-    template = env.get_template("feed.xml.jinja")
+    template = env.get_template("feed.xml")
     return template.render(
         self_link=self_link,
         channel=channel.model_dump(exclude_none=True),
