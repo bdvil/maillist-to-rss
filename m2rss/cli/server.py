@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from email.message import Message
 from email.utils import parsedate_to_datetime
 from imaplib import IMAP4
-from typing import reveal_type
+from typing import cast, reveal_type
 
 import aiohttp_jinja2
 import click
@@ -192,7 +192,11 @@ def email_from_data(data: bytes) -> Email:
         subtype = part.get_content_subtype()
         if maintype != "text" or subtype != "plain":
             continue
-        params["body"] = part.get_payload()
+        payload = part.get_payload(decode=True)
+        if isinstance(payload, bytes):
+            params["body"] = payload.decode()
+        else:
+            params["body"] = payload
     return Email.model_validate(params)
 
 
