@@ -184,7 +184,6 @@ def email_from_data(data: bytes) -> Email:
                 params["sender_name"] = author.strip()
                 params["sender_addr"] = addr.replace(">", "")
             case "Delivered-To":
-                print(val)
                 params["delivered_to"] = val
             case "Subject":
                 params["subject"] = val
@@ -296,8 +295,6 @@ async def handle_page(request: web.Request) -> web.Response:
         return await error_response(request, 404, "Unknown alias.")
     if page < 0:
         return await error_response(request, 404, "Page should be positive.")
-    print(len(emails))
-    print(link_key, link_val)
     data = {
         "feed_name": link_val,
         "page_num": page + 1,

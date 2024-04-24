@@ -9,7 +9,13 @@
     {% for item in items %}
     <item>
         <title>{{item.title}}</title>
-        <description>{{item.description}}</description>
+        <description>
+            <![CDATA[
+                {% for line in item.description.splitlines() %}
+                {{line}}<br/>
+                {% endfor %}
+            ]]>
+        </description>
         {% if item.link is not none %}
         <link>{{item.link}}</link>
         {% endif %}

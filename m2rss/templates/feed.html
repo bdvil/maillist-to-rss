@@ -12,7 +12,11 @@
     {% for item in items %}
     <article>
         <h2>{{ item.title }}</h2>
-        <p>{{ item.description }}</p>
+        <p>
+        {% for line in item.description.splitlines() %}
+            {{line}}<br/>
+        {% endfor %}
+        </p>
         <p>Published {{ item.pub_date }} from {{ item.author }}</p>
         <a href="{{item.guid}}">Read more →</a>
     </article>

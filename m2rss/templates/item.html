@@ -11,7 +11,11 @@
     <h1>Item {{ item_id }} from feed {{ feed_name }}</h1>
     <article>
         <h2>{{ item.title }}</h2>
-        <p>{{ item.description }}</p>
+        <p>
+        {% for line in item.description.splitlines() %}
+            {{line}}<br/>
+        {% endfor %}
+        </p>
     </article>
     <p>Published {{ item.pub_date }} by {{ item.author }}</p>
     <a href="/page/{{ feed_alias }}.html">See feed page</a>
