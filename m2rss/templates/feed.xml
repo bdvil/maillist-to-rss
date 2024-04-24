@@ -15,6 +15,9 @@
         {% endif %}
         <guid isPermaLink="true">{{item.guid}}</guid>
         <pubDate>{{item.pub_date}}</pubDate>
+        {% if item.author is not none %}
+        <author>{{item.author}}</author>
+        {% endif %}
     </item>
     {% endfor %}
 </channel>

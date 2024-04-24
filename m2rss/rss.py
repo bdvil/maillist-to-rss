@@ -10,6 +10,7 @@ class RSSItem(BaseModel):
     link: str | None = None
     guid: str
     pub_date: str
+    author: str | None = None
 
 
 class RssChannel(BaseModel):

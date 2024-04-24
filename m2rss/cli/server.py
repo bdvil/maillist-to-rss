@@ -219,6 +219,7 @@ async def handle_rss_feed(request: web.Request) -> web.Response:
     rss_items = [
         RSSItem(
             title=email.subject,
+            author=email.from_full,
             description=email.body,
             guid=f"{config.service_url}/page/{alias}/{email.id}.html",
             link=f"{config.service_url}/page/{alias}/{email.id}.html",
@@ -274,6 +275,7 @@ async def handle_item(request: web.Request) -> web.Response:
                 pub_date=email.date.astimezone(timezone.utc).strftime(
                     "%a, %d %b %Y %H:%M:%S %z"
                 ),
+                author=email.from_full,
             ),
         },
     )
@@ -307,6 +309,7 @@ async def handle_page(request: web.Request) -> web.Response:
                 pub_date=email.date.astimezone(timezone.utc).strftime(
                     "%a, %d %b %Y %H:%M:%S %z"
                 ),
+                author=email.from_full,
             )
             for email in emails
         ],

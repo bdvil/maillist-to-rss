@@ -11,9 +11,9 @@
     <h1>Feed {{ feed_name }} (page {{page_num}})</h1>
     {% for item in items %}
     <article>
-        <h2></h2>
+        <h2>{{ item.title }}</h2>
         <p>{{ item.description }}</p>
-        <p>{{ item.pub_date }}</p>
+        <p>Published {{ item.pub_date }} from {{ item.author }}</p>
         <a href="{{item.guid}}">Read more →</a>
     </article>
     {% endfor %}
