@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Feed {{ feed_name }}</title>
+  <title>Feed {{ feed_name }} (page {{page_num}})</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Feed {{ feed_name }}">
+  <meta name="description" content="Feed {{ feed_name }} (page {{page_num}})">
 </head>
 <body>
-    <h1>Feed {{ feed_name }}</h1>
+    <h1>Feed {{ feed_name }} (page {{page_num}})</h1>
     {% for item in items %}
     <article>
         <h2></h2>

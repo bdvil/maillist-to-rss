@@ -8,7 +8,7 @@ import aiohttp_jinja2
 import click
 import jinja2
 from aiohttp import web
-from psycopg import AsyncConnection
+from psycopg import AsyncConnection, sql
 from pydantic import BaseModel
 
 from m2rss.appkeys import config_key
@@ -22,9 +22,13 @@ class Email(BaseModel):
     user_agent: str
     content_language: str
     recipient: str
-    sender_full: str
-    sender_name: str
-    sender_addr: str
+    delivered_to: str | None = None
+    from_full: str
+    from_name: str
+    from_addr: str
+    sender_full: str | None = None
+    sender_name: str | None = None
+    sender_addr: str | None = None
     subject: str
     body: str
 
@@ -42,14 +46,19 @@ async def save_email(conninfo: str, mail: Email):
         async with conn.cursor() as cur:
             await cur.execute(
                 "INSERT INTO emails "
-                "(date, user_agent, content_language, recipient, "
+                "(date, user_agent, content_language, recipient, delivered_to, "
+                "from_full, from_name, from_addr, "
                 "sender_full, sender_name, sender_addr, subject, body) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     mail.date,
                     mail.user_agent,
                     mail.content_language,
                     mail.recipient,
+                    mail.delivered_to,
+                    mail.from_full,
+                    mail.from_name,
+                    mail.from_addr,
                     mail.sender_full,
                     mail.sender_name,
                     mail.sender_addr,
@@ -60,30 +69,35 @@ async def save_email(conninfo: str, mail: Email):
             await conn.commit()
 
 
-async def sender_from_alias(conninfo: str, alias: str) -> str | None:
+async def sender_from_alias(
+    conninfo: str, alias: str
+) -> tuple[str, str] | tuple[None, None]:
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT sender FROM aliases WHERE pass = %s LIMIT 1",
+                "SELECT link_key, link_val FROM aliases WHERE alias = %s LIMIT 1",
                 (alias,),
             )
             rec = await cur.fetchone()
             if rec is None:
-                return None
-            return rec[0]
+                return None, None
+            return rec[0], rec[1]
 
 
 async def get_emails(
-    conninfo: str, sender: str, page: int = 0
+    conninfo: str, alias_key: str, alias_val: str, page: int = 0, limit: int = 20
 ) -> list[RetrievedEmail] | None:
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT id, date, user_agent, content_language, recipient, "
-                "sender_full, sender_name, sender_addr, subject, body "
-                "FROM emails "
-                "WHERE sender_addr = %s ORDER BY date DESC LIMIT 20 OFFSET %s ",
-                (sender, page * 20),
+                sql.SQL(
+                    "SELECT id, date, user_agent, content_language, recipient, delivered_to, "
+                    "from_full, from_name, from_addr, "
+                    "sender_full, sender_name, sender_addr, subject, body "
+                    "FROM emails "
+                    "WHERE {} = %s ORDER BY date DESC LIMIT %s OFFSET %s "
+                ).format(sql.Identifier(alias_key)),
+                (alias_val, limit, page * limit),
             )
             emails: list[RetrievedEmail] = []
             async for record in cur:
@@ -94,26 +108,35 @@ async def get_emails(
                         user_agent=record[2],
                         content_language=record[3],
                         recipient=record[4],
-                        sender_full=record[5],
-                        sender_name=record[6],
-                        sender_addr=record[7],
-                        subject=record[8],
-                        body=record[9],
+                        delivered_to=record[5],
+                        from_full=record[6],
+                        from_name=record[7],
+                        from_addr=record[8],
+                        sender_full=record[9],
+                        sender_name=record[10],
+                        sender_addr=record[11],
+                        subject=record[12],
+                        body=record[13],
                     )
                 )
 
             return emails
 
 
-async def get_email(conninfo: str, sender: str, item_id: int) -> RetrievedEmail | None:
+async def get_email(
+    conninfo: str, link_key: str, link_val: str, item_id: int
+) -> RetrievedEmail | None:
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
             await cur.execute(
-                "SELECT id, date, user_agent, content_language, recipient, "
-                "sender_full, sender_name, sender_addr, subject, body "
-                "FROM emails "
-                "WHERE sender_addr = %s AND id = %s LIMIT 1",
-                (sender, item_id),
+                sql.SQL(
+                    "SELECT id, date, user_agent, content_language, recipient, delivered_to, "
+                    "from_full, from_name, from_addr, "
+                    "sender_full, sender_name, sender_addr, subject, body "
+                    "FROM emails "
+                    "WHERE {} = %s AND id = %s LIMIT 1"
+                ).format(sql.Identifier(link_key)),
+                (link_val, item_id),
             )
             record = await cur.fetchone()
             if record is not None:
@@ -123,11 +146,15 @@ async def get_email(conninfo: str, sender: str, item_id: int) -> RetrievedEmail 
                     user_agent=record[2],
                     content_language=record[3],
                     recipient=record[4],
-                    sender_full=record[5],
-                    sender_name=record[6],
-                    sender_addr=record[7],
-                    subject=record[8],
-                    body=record[9],
+                    delivered_to=record[5],
+                    from_full=record[6],
+                    from_name=record[7],
+                    from_addr=record[8],
+                    sender_full=record[9],
+                    sender_name=record[10],
+                    sender_addr=record[11],
+                    subject=record[12],
+                    body=record[13],
                 )
 
 
@@ -146,9 +173,16 @@ def email_from_data(data: bytes) -> Email:
                 params["recipient"] = val
             case "From":
                 author, _, addr = val.rpartition("<")
+                params["from_full"] = val
+                params["from_name"] = author.strip()
+                params["from_addr"] = addr.replace(">", "")
+            case "Sender":
+                author, _, addr = val.rpartition("<")
                 params["sender_full"] = val
                 params["sender_name"] = author.strip()
                 params["sender_addr"] = addr.replace(">", "")
+            case "Delivered-To":
+                params["delivered_to"] = val
             case "Subject":
                 params["subject"] = val
     for part in msg.walk():
@@ -163,18 +197,19 @@ async def handle_rss_feed(request: web.Request) -> web.Response:
     config = request.app[config_key]
     alias = request.match_info.get("alias", None)
     page = int(request.query.get("page", 0))
+    count = int(request.query.get("count", 20))
     if alias is None:
         return web.Response(body="404: Not Found", status=404)
-    sender = await sender_from_alias(config.database_url, alias)
-    if sender is None:
+    link_key, link_val = await sender_from_alias(config.database_url, alias)
+    if link_key is None or link_val is None:
         return web.Response(body="404: Not Found", status=404)
-    emails = await get_emails(config.database_url, sender, page)
+    emails = await get_emails(config.database_url, link_key, link_val, page, count)
     if emails is None:
         return web.Response(body="404: Not Found", status=404)
 
     channel = RssChannel(
-        title=sender,
-        description=f"{sender} mailing list",
+        title=link_val,
+        description=f"{link_val} mailing list",
         link=f"{config.service_url}/page/{alias}.html",
     )
     rss_items = [
@@ -215,10 +250,10 @@ async def handle_item(request: web.Request) -> web.Response:
         return await error_response(request, 404, "Empty alias")
     if item_id is None:
         return await error_response(request, 404, "Empty item")
-    sender = await sender_from_alias(config.database_url, alias)
-    if sender is None:
+    link_key, link_val = await sender_from_alias(config.database_url, alias)
+    if link_key is None or link_val is None:
         return await error_response(request, 404, "Unknown item.")
-    email = await get_email(config.database_url, sender, int(item_id))
+    email = await get_email(config.database_url, link_key, link_val, int(item_id))
     if email is None:
         return await error_response(request, 404, "Unknown item.")
     return await aiohttp_jinja2.render_template_async(
@@ -226,7 +261,7 @@ async def handle_item(request: web.Request) -> web.Response:
         request,
         {
             "item_id": item_id,
-            "feed_name": sender,
+            "feed_name": link_val,
             "feed_alias": alias,
             "item": RSSItem(
                 title=email.subject,
@@ -244,18 +279,22 @@ async def handle_page(request: web.Request) -> web.Response:
     config = request.app[config_key]
     alias = request.match_info.get("alias", None)
     page = int(request.query.get("page", 0))
+    count = int(request.query.get("count", 20))
     if alias is None:
         return await error_response(request, 404, "Empty alias")
-    sender = await sender_from_alias(config.database_url, alias)
-    if sender is None:
+    link_key, link_val = await sender_from_alias(config.database_url, alias)
+    if link_key is None or link_val is None:
         return await error_response(request, 404, "Unknown item.")
-    emails = await get_emails(config.database_url, sender, page)
+    emails = await get_emails(config.database_url, link_key, link_val, page, count)
     if emails is None:
         return await error_response(request, 404, "Unknown alias.")
     if page < 0:
         return await error_response(request, 404, "Page should be positive.")
+    print(len(emails))
+    print(link_key, link_val)
     data = {
-        "feed_name": sender,
+        "feed_name": link_val,
+        "page_num": page + 1,
         "items": [
             RSSItem(
                 title=email.subject,
@@ -269,10 +308,14 @@ async def handle_page(request: web.Request) -> web.Response:
         ],
     }
     if page > 0:
-        data["next_link"] = f"{config.service_url}/page/{alias}.html?page={page - 1}"
+        data["next_link"] = (
+            f"{config.service_url}/page/{alias}.html?page={page - 1}&count={count}"
+        )
     else:
         data["next_link"] = None
-    data["prev_link"] = f"{config.service_url}/page/{alias}.html?page={page + 1}"
+    data["prev_link"] = (
+        f"{config.service_url}/page/{alias}.html?page={page + 1}&count={count}"
+    )
 
     return await aiohttp_jinja2.render_template_async("feed.html", request, data)
 
