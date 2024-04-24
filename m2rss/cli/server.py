@@ -2,7 +2,9 @@ import asyncio
 import email
 from datetime import datetime, timezone
 from email.message import Message
+from email.utils import parsedate_to_datetime
 from imaplib import IMAP4
+from typing import reveal_type
 
 import aiohttp_jinja2
 import click
@@ -19,8 +21,8 @@ from m2rss.rss import RssChannel, RSSItem, make_rss
 
 class Email(BaseModel):
     date: datetime
-    user_agent: str
-    content_language: str
+    user_agent: str = ""
+    content_language: str = "en-US"
     recipient: str
     delivered_to: str | None = None
     from_full: str
@@ -164,7 +166,7 @@ def email_from_data(data: bytes) -> Email:
     for key, val in msg.items():
         match key:
             case "Date":
-                params["date"] = datetime.strptime(val, "%a, %d %b %Y %H:%M:%S %z")
+                params["date"] = parsedate_to_datetime(val)
             case "User-Agent":
                 params["user_agent"] = val
             case "Content-Language":
@@ -182,14 +184,16 @@ def email_from_data(data: bytes) -> Email:
                 params["sender_name"] = author.strip()
                 params["sender_addr"] = addr.replace(">", "")
             case "Delivered-To":
+                print(val)
                 params["delivered_to"] = val
             case "Subject":
                 params["subject"] = val
     for part in msg.walk():
         maintype = part.get_content_maintype()
-        if maintype != "text":
+        subtype = part.get_content_subtype()
+        if maintype != "text" or subtype != "plain":
             continue
-        params["body"] = part.get_payload(decode=True)
+        params["body"] = part.get_payload()
     return Email.model_validate(params)
 
 
