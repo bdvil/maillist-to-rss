@@ -6,29 +6,32 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Feed {{ feed_name }} (page {{page_num}})">
+  <link href="/static/output.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Feed {{ feed_name }} (page {{page_num}})</h1>
-    {% for item in items %}
-    <article>
-        <h2>{{ item.title }}</h2>
-        <p>
-        {% for line in item.description.splitlines() %}
-            {{line}}<br/>
+    <h1 class="text-3xl font-bold text-center mt-2">Feed {{ feed_name }} (page {{page_num}})</h1>
+    <div>
+        {% for item in items %}
+        <article class="max-w-4xl mx-auto my-3 p-2 rounded rounded-xl bg-slate-50 border border-black/5">
+            <h2 class="text-2xl font-bold">{{ item.title }}</h2>
+            <p class="text-base/7">
+            {% for line in item.description.splitlines() %}
+                {{line}}<br/>
+            {% endfor %}
+            </p>
+            <p>Published <span class="text-slate-500">{{ item.pub_date }}</span> by <span class="text-slate-500">{{ item.author }}</span></p>
+            <a class="text-blue-600 hover:underline" href="{{item.guid}}">Read more →</a>
+        </article>
         {% endfor %}
-        </p>
-        <p>Published {{ item.pub_date }} from {{ item.author }}</p>
-        <a href="{{item.guid}}">Read more →</a>
-    </article>
-    {% endfor %}
 
-    <section id="navigation">
-        {% if next_link is not none %} 
-        <a href="{{ next_link }}">← Next</a>
-        {%endif %}
-        {% if prev_link is not none %} 
-        <a href="{{ prev_link }}">Previous →</a>
-        {%endif %}
-    </section>
+        <section id="navigation" class="max-w-4xl mx-auto my-2">
+            {% if next_link is not none %} 
+            <a class="px-3 py-1 bg-sky-400 hover:bg-sky-400/90 border-sky-600 text-white rounded-full" href="{{ next_link }}">← Next</a>
+            {%endif %}
+            {% if prev_link is not none %} 
+            <a class="px-3 py-1 bg-sky-400 hover:bg-sky-400/90 border-sky-600 text-white rounded-full" href="{{ prev_link }}">Previous →</a>
+            {%endif %}
+        </section>
+    </div>
 </body>
 </html>

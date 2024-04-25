@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from m2rss.appkeys import config_key
 from m2rss.config import Config, load_config
+from m2rss.constants import PROJECT_DIR
 from m2rss.db_migrations import execute_migrations
 from m2rss.rss import RssChannel, RSSItem, make_rss
 
@@ -337,6 +338,7 @@ async def http_server_task_runner():
     app.add_routes([web.get("/rss/{alias}.xml", handle_rss_feed)])
     app.add_routes([web.get("/page/{alias}/{item}.html", handle_item)])
     app.add_routes([web.get("/page/{alias}.html", handle_page)])
+    app.router.add_static("/static/", PROJECT_DIR / "m2rss" / "static", name="static")
     app[config_key] = config
 
     runner = web.AppRunner(app)
