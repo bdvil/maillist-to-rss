@@ -18,9 +18,14 @@
                 {{line}}<br/>
             {% endfor %}
             </p>
-            <p>Published <span class="text-slate-500">{{ item.pub_date }}</span> by <span class="text-slate-500">{{ item.author }}</span></p>
+            <p>Published <span id="date" class="text-slate-500">{{ item.pub_date }}</span> by <span class="text-slate-500">{{ item.author }}</span></p>
         </article>
         <a class="text-blue-600 hover:underline" href="/page/{{ feed_alias }}.html">See feed page</a>
     </div>
+    <script>
+        const itemDate = document.getElementById("date");
+        const newDate = new Date(itemDate.innerText);
+        itemDate.innerHTML = newDate.toString();
+    </script>
 </body>
 </html>

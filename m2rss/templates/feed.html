@@ -19,7 +19,7 @@
                 {{line}}<br/>
             {% endfor %}
             </p>
-            <p>Published <span class="text-slate-500">{{ item.pub_date }}</span> by <span class="text-slate-500">{{ item.author }}</span></p>
+            <p>Published <span class="date text-slate-500">{{ item.pub_date }}</span> by <span class="text-slate-500">{{ item.author }}</span></p>
             <a class="text-blue-600 hover:underline" href="{{item.guid}}">Read more →</a>
         </article>
         {% endfor %}
@@ -33,5 +33,12 @@
             {%endif %}
         </section>
     </div>
+    <script>
+        const dates = document.getElementsByClassName("date");
+        for (let i = 0; i < dates.length; i++) {
+            const newDate = new Date(dates[i].innerText);
+            dates[i].innerHTML = newDate.toString();
+        }
+    </script>
 </body>
 </html>
