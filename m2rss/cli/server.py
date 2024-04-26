@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from email.message import Message
 from email.utils import parsedate_to_datetime
 from imaplib import IMAP4
-from typing import cast, reveal_type
 
 import aiohttp_jinja2
 import click
@@ -24,7 +23,7 @@ class Email(BaseModel):
     date: datetime
     user_agent: str = ""
     content_language: str = "en-US"
-    recipient: str
+    recipient: str = ""
     delivered_to: str | None = None
     from_full: str
     from_name: str
