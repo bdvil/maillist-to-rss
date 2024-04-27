@@ -372,7 +372,10 @@ async def fetch_mails(config: Config):
 async def fetch_mail_task():
     config = load_config()
     while True:
-        await fetch_mails(config)
+        try:
+            await fetch_mails(config)
+        except Exception as e:
+            print(f"An error occured. Retrying in {config.fetch_mail_every}", str(e))
         await asyncio.sleep(config.fetch_mail_every)
 
 
