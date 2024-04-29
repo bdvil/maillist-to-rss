@@ -43,6 +43,10 @@ class Emails(BaseModel):
     emails: list[Email]
 
 
+class UnknownCharsetException(Exception):
+    pass
+
+
 async def save_email(conninfo: str, mail: Email):
     async with await AsyncConnection.connect(conninfo) as conn:
         async with conn.cursor() as cur:
@@ -193,8 +197,13 @@ def email_from_data(data: bytes) -> Email:
         if maintype != "text" or subtype != "plain":
             continue
         payload = part.get_payload(decode=True)
+        charset = part.get_content_charset()
+        if charset is None:
+            raise UnknownCharsetException(
+                f"Charset is not given in email {params["subject"]}"
+            )
         if isinstance(payload, bytes):
-            params["body"] = payload.decode()
+            params["body"] = payload.decode(charset)
         else:
             params["body"] = payload
     return Email.model_validate(params)
@@ -375,7 +384,7 @@ async def fetch_mail_task():
         try:
             await fetch_mails(config)
         except Exception as e:
-            print(f"An error occured. Retrying in {config.fetch_mail_every}", str(e))
+            print(f"An error occured. Retrying in {config.fetch_mail_every}.", str(e))
         await asyncio.sleep(config.fetch_mail_every)
 
 
