@@ -9,7 +9,7 @@ from psycopg import AsyncConnection
 
 from m2rss.appkeys import config_key, pg_key
 from m2rss.config import load_config
-from m2rss.constants import PROJECT_DIR
+from m2rss.constants import LOGGER, PROJECT_DIR
 from m2rss.db_migrations import execute_migrations
 from m2rss.routes import ROUTES
 
@@ -38,6 +38,7 @@ async def http_server_task_runner():
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, port=config.server_port)
+    LOGGER.info(f"Listening on http://localhost:{config.server_port}")
     await site.start()
     await asyncio.Event().wait()
 
