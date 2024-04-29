@@ -1,11 +1,14 @@
 import asyncio
+import email
+from email.message import Message
+from email.utils import parsedate_to_datetime
 from imaplib import IMAP4
 
 import click
 from psycopg import AsyncConnection, Connection
 
-from m2rss.cli.server import email_from_data, save_email
 from m2rss.config import Config, load_config
+from m2rss.data.emails import Email, save_email
 
 
 @click.group("email")
@@ -21,6 +24,55 @@ def add_alias_command(email_id: int):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM emails WHERE id = %s", (email_id,))
             conn.commit()
+
+
+class UnknownCharsetException(Exception):
+    pass
+
+
+def email_from_data(data: bytes) -> Email:
+    msg: Message = email.message_from_bytes(data)
+    params = {}
+    for key, val in msg.items():
+        match key:
+            case "Date":
+                params["date"] = parsedate_to_datetime(val)
+            case "User-Agent":
+                params["user_agent"] = val
+            case "Content-Language":
+                params["content_language"] = val
+            case "To":
+                params["recipient"] = val
+            case "From":
+                author, _, addr = val.rpartition("<")
+                params["from_full"] = val
+                params["from_name"] = author.strip()
+                params["from_addr"] = addr.replace(">", "")
+            case "Sender":
+                author, _, addr = val.rpartition("<")
+                params["sender_full"] = val
+                params["sender_name"] = author.strip()
+                params["sender_addr"] = addr.replace(">", "")
+            case "Delivered-To":
+                params["delivered_to"] = val
+            case "Subject":
+                params["subject"] = val
+    for part in msg.walk():
+        maintype = part.get_content_maintype()
+        subtype = part.get_content_subtype()
+        if maintype != "text" or subtype != "plain":
+            continue
+        payload = part.get_payload(decode=True)
+        charset = part.get_content_charset()
+        if charset is None:
+            raise UnknownCharsetException(
+                f"Charset is not given in email {params["subject"]}"
+            )
+        if isinstance(payload, bytes):
+            params["body"] = payload.decode(charset)
+        else:
+            params["body"] = payload
+    return Email.model_validate(params)
 
 
 async def fetch_mails(config: Config, conn: AsyncConnection):
