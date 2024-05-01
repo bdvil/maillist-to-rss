@@ -91,10 +91,8 @@ def email_from_data(html_sanitizer: Sanitizer, data: bytes) -> Email:
         elif subtype == "html":
             params["formatted_body"] = html_sanitizer.sanitize(body)
 
-        if "formatted_body" not in params:
-            params["formatted_body"] = html_sanitizer.sanitize(
-                format_plain(params["body"])
-            )
+    if "formatted_body" not in params:
+        params["formatted_body"] = html_sanitizer.sanitize(format_plain(params["body"]))
     return Email.model_validate(params)
 
 
