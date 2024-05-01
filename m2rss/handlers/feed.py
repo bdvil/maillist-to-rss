@@ -73,7 +73,7 @@ async def handle_item(request: web.Request) -> web.Response:
             "feed_alias": alias,
             "item": RSSItem(
                 title=email.subject,
-                description=email.body,
+                description=email.formatted_body,
                 guid=f"{config.service_url}/page/{alias}/{email.id}.html",
                 pub_date=email.date.astimezone(timezone.utc).strftime(
                     "%a, %d %b %Y %H:%M:%S %z"
@@ -106,7 +106,7 @@ async def handle_page(request: web.Request) -> web.Response:
         "items": [
             RSSItem(
                 title=email.subject,
-                description=email.body,
+                description=email.formatted_body,
                 guid=f"{config.service_url}/page/{alias}/{email.id}.html",
                 pub_date=email.date.astimezone(timezone.utc).strftime(
                     "%a, %d %b %Y %H:%M:%S %z"

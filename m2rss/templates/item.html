@@ -7,17 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Item {{ item_id }} from feed {{ feed_name }}">
   <link href="/static/output.css" rel="stylesheet">
+  <link href="/static/style.css" rel="stylesheet">
 </head>
 <body>
     <h1 class="text-3xl font-bold text-center mt-2">Item {{ item_id }} from feed {{ feed_name }}</h1>
     <div class="max-w-4xl mx-auto my-3 p-2 rounded rounded-xl bg-slate-50 border border-black/5">
         <article class="container mb-3">
             <h2 class="text-2xl font-bold">{{ item.title }}</h2>
-            <p class="text-base/7">
-            {% for line in item.description.splitlines() %}
-                {{line}}<br/>
-            {% endfor %}
-            </p>
+            <div class="content mt-2">
+            {{item.description | safe}}
+            </div>
             <p>Published <span id="date" class="text-slate-500">{{ item.pub_date }}</span> by <span class="text-slate-500">{{ item.author }}</span></p>
         </article>
         <a class="text-blue-600 hover:underline" href="/page/{{ feed_alias }}.html">See feed page</a>

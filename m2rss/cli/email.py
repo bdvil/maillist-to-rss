@@ -5,6 +5,7 @@ from email.utils import parsedate_to_datetime
 from imaplib import IMAP4
 
 import click
+from html_sanitizer import Sanitizer
 from psycopg import AsyncConnection, Connection
 
 from m2rss.config import Config, load_config
@@ -30,7 +31,18 @@ class UnknownCharsetException(Exception):
     pass
 
 
-def email_from_data(data: bytes) -> Email:
+def format_plain(text: str) -> str:
+    lines = text.splitlines()
+    final_text = "<p>"
+    for line in lines:
+        if line == "":
+            final_text += "</p><p>"
+        else:
+            final_text += " " + line
+    return final_text + "</p>"
+
+
+def email_from_data(html_sanitizer: Sanitizer, data: bytes) -> Email:
     msg: Message = email.message_from_bytes(data)
     params = {}
     for key, val in msg.items():
@@ -69,13 +81,24 @@ def email_from_data(data: bytes) -> Email:
                 f"Charset is not given in email {params["subject"]}"
             )
         if isinstance(payload, bytes):
-            params["body"] = payload.decode(charset)
+            body = payload.decode(charset)
+        elif isinstance(payload, str):
+            body = payload
         else:
-            params["body"] = payload
+            raise UnknownCharsetException(f"Type of payload is {type(payload)}")
+        if subtype == "plain":
+            params["body"] = body
+        elif subtype == "html":
+            params["formatted_body"] = html_sanitizer.sanitize(body)
+
+        if "formatted_body" not in params:
+            params["formatted_body"] = html_sanitizer.sanitize(
+                format_plain(params["body"])
+            )
     return Email.model_validate(params)
 
 
-async def fetch_mails(config: Config, conn: AsyncConnection):
+async def fetch_mails(config: Config, conn: AsyncConnection, html_sanitizer: Sanitizer):
     with IMAP4(config.email_server, config.imap_port) as imap_client:
         imap_client.starttls()
         imap_client.login(config.email_addr, config.email_pass)
@@ -85,7 +108,7 @@ async def fetch_mails(config: Config, conn: AsyncConnection):
             _, fdata = imap_client.fetch(num, "(RFC822)")
             if fdata[0] is None or not isinstance(fdata[0], tuple):
                 continue
-            msg = email_from_data(fdata[0][1])
+            msg = email_from_data(html_sanitizer, fdata[0][1])
             print(f"Received new email from {msg.sender_addr}")
             await save_email(conn, msg)
             imap_client.store(num, "+FLAGS", "\\Deleted")
@@ -94,10 +117,11 @@ async def fetch_mails(config: Config, conn: AsyncConnection):
 
 async def fetch_mail_task():
     config = load_config()
+    html_sanitizer = Sanitizer()
     async with await AsyncConnection.connect(config.database_url) as conn:
         while True:
             try:
-                await fetch_mails(config, conn)
+                await fetch_mails(config, conn, html_sanitizer)
             except Exception as e:
                 print(
                     f"An error occured. Retrying in {config.fetch_mail_every}.", str(e)
@@ -108,3 +132,20 @@ async def fetch_mail_task():
 @email_group.command("watch")
 def watch_mail_command():
     asyncio.run(fetch_mail_task())
+
+
+@email_group.command("format-body")
+def format_body_command():
+    config = load_config()
+    with Connection.connect(config.database_url) as conn:
+        formatted_bodies: list[tuple[str, int]] = []
+        sanitizer = Sanitizer()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, body FROM emails")
+            for record in cur:
+                formatted_bodies.append(
+                    (sanitizer.sanitize(format_plain(record[1])), record[0])
+                )
+            cur.executemany(
+                "UPDATE emails SET formatted_body = %s WHERE id = %s", formatted_bodies
+            )

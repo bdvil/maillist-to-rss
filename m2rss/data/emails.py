@@ -18,6 +18,7 @@ class Email(BaseModel):
     sender_addr: str | None = None
     subject: str
     body: str
+    formatted_body: str
 
 
 class RetrievedEmail(Email):
@@ -34,8 +35,8 @@ async def save_email(conn: AsyncConnection, mail: Email):
             "INSERT INTO emails "
             "(date, user_agent, content_language, recipient, delivered_to, "
             "from_full, from_name, from_addr, "
-            "sender_full, sender_name, sender_addr, subject, body) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "sender_full, sender_name, sender_addr, subject, body, formatted_body) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 mail.date,
                 mail.user_agent,
@@ -50,6 +51,7 @@ async def save_email(conn: AsyncConnection, mail: Email):
                 mail.sender_addr,
                 mail.subject,
                 mail.body,
+                mail.formatted_body,
             ),
         )
         await conn.commit()
@@ -82,7 +84,7 @@ async def get_emails(
             sql.SQL(
                 "SELECT id, date, user_agent, content_language, recipient, delivered_to, "
                 "from_full, from_name, from_addr, "
-                "sender_full, sender_name, sender_addr, subject, body "
+                "sender_full, sender_name, sender_addr, subject, body, formatted_body "
                 "FROM emails "
                 "WHERE {} = %s ORDER BY date DESC LIMIT %s OFFSET %s "
             ).format(sql.Identifier(alias_key)),
@@ -106,6 +108,7 @@ async def get_emails(
                     sender_addr=record[11],
                     subject=record[12],
                     body=record[13],
+                    formatted_body=record[14],
                 )
             )
 
@@ -120,7 +123,7 @@ async def get_email(
             sql.SQL(
                 "SELECT id, date, user_agent, content_language, recipient, delivered_to, "
                 "from_full, from_name, from_addr, "
-                "sender_full, sender_name, sender_addr, subject, body "
+                "sender_full, sender_name, sender_addr, subject, body, formatted_body "
                 "FROM emails "
                 "WHERE {} = %s AND id = %s LIMIT 1"
             ).format(sql.Identifier(link_key)),
@@ -143,4 +146,5 @@ async def get_email(
                 sender_addr=record[11],
                 subject=record[12],
                 body=record[13],
+                formatted_body=record[14],
             )
