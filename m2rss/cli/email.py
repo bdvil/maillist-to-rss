@@ -5,6 +5,7 @@ from email.utils import parsedate_to_datetime
 from imaplib import IMAP4
 
 import click
+from bs4 import BeautifulSoup
 from html_sanitizer import Sanitizer
 from psycopg import AsyncConnection, Connection
 
@@ -72,7 +73,7 @@ def email_from_data(html_sanitizer: Sanitizer, data: bytes) -> Email:
     for part in msg.walk():
         maintype = part.get_content_maintype()
         subtype = part.get_content_subtype()
-        if maintype != "text" or subtype != "plain":
+        if maintype != "text":
             continue
         payload = part.get_payload(decode=True)
         charset = part.get_content_charset()
@@ -89,7 +90,11 @@ def email_from_data(html_sanitizer: Sanitizer, data: bytes) -> Email:
         if subtype == "plain":
             params["body"] = body
         elif subtype == "html":
-            params["formatted_body"] = html_sanitizer.sanitize(body)
+            html_body = BeautifulSoup(html_sanitizer.sanitize(body), "lxml").body
+            if html_body is not None:
+                params["formatted_body"] = "".join(
+                    [str(item) for item in html_body.contents]
+                )
 
     if "formatted_body" not in params:
         params["formatted_body"] = html_sanitizer.sanitize(format_plain(params["body"]))
