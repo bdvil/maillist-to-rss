@@ -43,7 +43,7 @@ def format_plain(text: str) -> str:
     return final_text + "</p>"
 
 
-def email_from_data(html_sanitizer: Sanitizer, data: bytes) -> Email:
+def email_from_data(html_sanitizer: Sanitizer, email_addr: str, data: bytes) -> Email:
     msg: Message = email.message_from_bytes(data)
     params = {}
     for key, val in msg.items():
@@ -87,6 +87,7 @@ def email_from_data(html_sanitizer: Sanitizer, data: bytes) -> Email:
             body = payload
         else:
             raise UnknownCharsetException(f"Type of payload is {type(payload)}")
+        body = body.replace(email_addr, "redacted")
         if subtype == "plain":
             params["body"] = body
         elif subtype == "html":
@@ -111,7 +112,7 @@ async def fetch_mails(config: Config, conn: AsyncConnection, html_sanitizer: San
             _, fdata = imap_client.fetch(num, "(RFC822)")
             if fdata[0] is None or not isinstance(fdata[0], tuple):
                 continue
-            msg = email_from_data(html_sanitizer, fdata[0][1])
+            msg = email_from_data(html_sanitizer, config.email_addr, fdata[0][1])
             print(f"Received new email from {msg.sender_addr}")
             await save_email(conn, msg)
             imap_client.store(num, "+FLAGS", "\\Deleted")
