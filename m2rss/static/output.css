@@ -682,9 +682,9 @@ video {
   line-height: 2.25rem;
 }
 
-.text-base\/7 {
-  font-size: 1rem;
-  line-height: 1.75rem;
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
 }
 
 .font-bold {

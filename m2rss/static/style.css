@@ -7,6 +7,10 @@
   list-style-type: disc;
   margin-left: 1rem;
 }
+.content ol {
+  list-style-type: decimal;
+  margin-left: 1rem;
+}
 
 .content a {
   --tw-text-opacity: 1;
@@ -14,4 +18,21 @@
 }
 .content a:hover {
   text-decoration-line: underline;
+}
+
+.content h1 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+.content h2 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+.content h3 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+.content h4 {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
 }
