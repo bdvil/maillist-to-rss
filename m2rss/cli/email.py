@@ -34,13 +34,15 @@ class UnknownCharsetException(Exception):
 
 def format_plain(text: str) -> str:
     lines = text.splitlines()
-    final_text = "<p>"
+    final_text = ""
     for line in lines:
         if line == "":
             final_text += "</p><p>"
+        elif final_text == "":
+            final_text += line
         else:
-            final_text += " " + line
-    return final_text + "</p>"
+            final_text += "<br>" + line
+    return "<p>" + final_text + "</p>"
 
 
 def email_from_data(html_sanitizer: Sanitizer, email_addr: str, data: bytes) -> Email:
