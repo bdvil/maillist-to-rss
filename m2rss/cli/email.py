@@ -111,13 +111,16 @@ async def fetch_mails(config: Config, conn: AsyncConnection, html_sanitizer: San
         imap_client.select()
         _, data = imap_client.search(None, "ALL")
         for num in data[0].split():
-            _, fdata = imap_client.fetch(num, "(RFC822)")
-            if fdata[0] is None or not isinstance(fdata[0], tuple):
-                continue
-            msg = email_from_data(html_sanitizer, config.email_addr, fdata[0][1])
-            print(f"Received new email from {msg.sender_addr}")
-            await save_email(conn, msg)
-            imap_client.store(num, "+FLAGS", "\\Deleted")
+            try:
+                _, fdata = imap_client.fetch(num, "(RFC822)")
+                if fdata[0] is None or not isinstance(fdata[0], tuple):
+                    continue
+                msg = email_from_data(html_sanitizer, config.email_addr, fdata[0][1])
+                print(f"Received new email from {msg.sender_addr}")
+                await save_email(conn, msg)
+                imap_client.store(num, "+FLAGS", "\\Deleted")
+            except Exception as e:
+                print("An error occured. Skipping email.", str(e))
         imap_client.expunge()
 
 
